@@ -77,37 +77,317 @@ CLASS ZCL_ZFILE_DPC_EXT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  method /IWBEP/IF_MGW_APPL_SRV_RUNTIME~DELETE_STREAM.
+  METHOD /iwbep/if_mgw_appl_srv_runtime~delete_stream.
 
-  endmethod.
+    DATA: ls_key_tab LIKE LINE OF it_key_tab.
+
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'Fileid'.
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não informado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    SELECT COUNT(*)
+      FROM zfile
+     WHERE fileid = ls_key_tab-value.
+
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não encontrado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    DELETE FROM zfile
+     WHERE fileid = ls_key_tab-value.
+
+  ENDMETHOD.
 
 
-  method /IWBEP/IF_MGW_APPL_SRV_RUNTIME~UPDATE_STREAM.
+  METHOD /iwbep/if_mgw_appl_srv_runtime~update_stream.
 
-  endmethod.
+    DATA: ls_zfile   TYPE zfile.
+    DATA: ls_key_tab TYPE /iwbep/s_mgw_name_value_pair.
+    DATA: ls_header  TYPE ihttpnvp.
+    DATA: ls_stream  TYPE ty_s_media_resource.
+
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'Fileid'.
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não informado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    " process
+    CLEAR ls_zfile.
+
+    SELECT SINGLE *
+      INTO ls_zfile
+      FROM zfile
+     WHERE fileid = ls_key_tab-value.
+
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não encontrado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    ls_zfile-filesize = xstrlen( is_media_resource-value ).
+    ls_zfile-mimetype = is_media_resource-mime_type.
+    ls_zfile-content  = is_media_resource-value.
+    MODIFY zfile FROM ls_zfile.
+
+  ENDMETHOD.
 
 
-  method /IWBEP/IF_MGW_CORE_SRV_RUNTIME~READ_STREAM.
+  METHOD /iwbep/if_mgw_core_srv_runtime~read_stream.
 
-  endmethod.
+    DATA: ls_zfile   TYPE zfile.
+    DATA: ls_key_tab TYPE /iwbep/s_mgw_name_value_pair.
+    DATA: ls_header  TYPE ihttpnvp.
+    DATA: ls_stream  TYPE ty_s_media_resource.
+
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    READ TABLE is_request_details-key_tab INTO ls_key_tab WITH KEY name = 'Fileid'.
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não informado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    " process
+    CLEAR ls_zfile.
+
+    SELECT SINGLE *
+      INTO ls_zfile
+      FROM zfile
+     WHERE fileid = ls_key_tab-value.
+
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não encontrado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    " output
+    CLEAR ls_header.
+    ls_header-name  = 'Content-Disposition'.
+    ls_header-value = |attachment; filename="{ ls_zfile-filename }"|.
+    set_header( ls_header ).
+
+    ls_stream-value     = ls_zfile-content.
+    ls_stream-mime_type = ls_zfile-mimetype.
+
+    copy_data_to_ref(
+      EXPORTING
+        is_data = ls_stream
+      CHANGING
+        cr_data = cr_stream
+    ).
+
+  ENDMETHOD.
 
 
-  method FILESET_DELETE_ENTITY.
+  METHOD fileset_delete_entity.
 
-  endmethod.
+    DATA: ls_key_tab LIKE LINE OF it_key_tab.
+
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'Fileid'.
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não informado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    SELECT COUNT(*)
+      FROM zfile
+     WHERE fileid = ls_key_tab-value.
+
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não encontrado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    DELETE FROM zfile
+     WHERE fileid = ls_key_tab-value.
+
+  ENDMETHOD.
 
 
-  method FILESET_GET_ENTITY.
+  METHOD fileset_get_entity.
 
-  endmethod.
+    DATA: ls_zfile   TYPE zfile.
+    DATA: ls_key_tab LIKE LINE OF it_key_tab.
+
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'Fileid'.
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não informado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    SELECT SINGLE *
+      INTO ls_zfile
+      FROM zfile
+     WHERE fileid = ls_key_tab-value.
+
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não encontrado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    MOVE-CORRESPONDING ls_zfile TO er_entity.
+
+  ENDMETHOD.
 
 
-  method FILESET_GET_ENTITYSET.
+  METHOD fileset_get_entityset.
 
-  endmethod.
+    DATA: lt_zfile     TYPE STANDARD TABLE OF zfile.
+    DATA: ls_zfile     TYPE zfile.
+    DATA: ls_entityset LIKE LINE OF et_entityset.
+
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    CLEAR lt_zfile.
+
+    SELECT fileid
+           erdat
+           erzet
+           ernam
+           filename
+           filesize
+           mimetype
+
+           " Não carregando content na listagem para não ficar pesado,
+           " quem precisar do conteúdo, deve fazer uma requisição específica
+           "content
+      INTO CORRESPONDING FIELDS OF TABLE lt_zfile
+      FROM zfile.
+
+    LOOP AT lt_zfile INTO ls_zfile.
+      MOVE-CORRESPONDING ls_zfile TO ls_entityset.
+      APPEND ls_entityset TO et_entityset.
+    ENDLOOP.
+
+  ENDMETHOD.
 
 
-  method FILESET_UPDATE_ENTITY.
+  METHOD fileset_update_entity.
 
-  endmethod.
+    DATA: ls_zfile   TYPE zfile.
+    DATA: ls_key_tab LIKE LINE OF it_key_tab.
+
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'Fileid'.
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não informado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    SELECT SINGLE *
+      INTO ls_zfile
+      FROM zfile
+     WHERE fileid = ls_key_tab-value.
+
+    IF sy-subrc <> 0.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id não encontrado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+    io_data_provider->read_entry_data(
+      IMPORTING
+        es_data = er_entity
+    ).
+
+    ls_zfile-filename = er_entity-filename.
+    MODIFY zfile FROM ls_zfile.
+
+  ENDMETHOD.
 ENDCLASS.
